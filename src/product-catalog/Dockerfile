@@ -1,8 +1,8 @@
-FROM golang:1.22-alpine AS builder
+FROM golang:1.24-alpine AS builder
 
 WORKDIR /usr/src/app
 
-# Copy module files first (from correct folder)
+# Copy module files first
 COPY go.mod go.sum ./
 
 RUN go mod download
@@ -18,10 +18,10 @@ FROM alpine AS release
 
 WORKDIR /usr/src/app/
 
-# Copy runtime assets
+# runtime assets
 COPY products ./products
 
-# Copy binary from builder
+# binary
 COPY --from=builder /usr/src/app/product-catalog ./product-catalog
 
 ENV PRODUCT_CATALOG_PORT=8088
