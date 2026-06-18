@@ -36,11 +36,14 @@ import (
 	otelhooks "github.com/open-feature/go-sdk-contrib/hooks/open-telemetry/pkg"
 	flagd "github.com/open-feature/go-sdk-contrib/providers/flagd/pkg"
 	"github.com/open-feature/go-sdk/openfeature"
+
 	pb "github.com/opentelemetry/opentelemetry-demo/src/product-catalog/genproto/oteldemo"
+
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
 	healthpb "google.golang.org/grpc/health/grpc_health_v1"
+	"google.golang.org/grpc/health"
 	"google.golang.org/grpc/reflection"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/encoding/protojson"
@@ -87,12 +90,20 @@ func initTracerProvider() *sdktrace.TracerProvider {
 	if err != nil {
 		log.Fatalf("OTLP Trace gRPC Creation: %v", err)
 	}
+
 	tp := sdktrace.NewTracerProvider(
 		sdktrace.WithBatcher(exporter),
 		sdktrace.WithResource(initResource()),
 	)
+
 	otel.SetTracerProvider(tp)
-	otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(propagation.TraceContext{}, propagation.Baggage{}))
+	otel.SetTextMapPropagator(
+		propagation.NewCompositeTextMapPropagator(
+			propagation.TraceContext{},
+			propagation.Baggage{},
+		),
+	)
+
 	return tp
 }
 
@@ -108,6 +119,7 @@ func initMeterProvider() *sdkmetric.MeterProvider {
 		sdkmetric.WithReader(sdkmetric.NewPeriodicReader(exporter)),
 		sdkmetric.WithResource(initResource()),
 	)
+
 	otel.SetMeterProvider(mp)
 	return mp
 }
@@ -128,6 +140,7 @@ func main() {
 		}
 		log.Println("Shutdown meter provider")
 	}()
+
 	openfeature.AddHooks(otelhooks.NewTracesHook())
 	err := openfeature.SetProvider(flagd.NewProvider())
 	if err != nil {
@@ -140,6 +153,7 @@ func main() {
 	}
 
 	svc := &productCatalog{}
+
 	var port string
 	mustMapEnv(&port, "PRODUCT_CATALOG_PORT")
 
@@ -156,8 +170,12 @@ func main() {
 
 	reflection.Register(srv)
 
+	// ✅ register your service
 	pb.RegisterProductCatalogServiceServer(srv, svc)
-	healthpb.RegisterHealthServer(srv, svc)
+
+	// ✅ FIX: proper gRPC health server
+	hs := health.NewServer()
+	healthpb.RegisterHealthServer(srv, hs)
 
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM, syscall.SIGKILL)
 	defer cancel()
@@ -179,8 +197,6 @@ type productCatalog struct {
 }
 
 func readProductFiles() ([]*pb.Product, error) {
-
-	// find all .json files in the products directory
 	entries, err := os.ReadDir("./products")
 	if err != nil {
 		return nil, err
@@ -197,8 +213,6 @@ func readProductFiles() ([]*pb.Product, error) {
 		}
 	}
 
-	// read the contents of each .json file and unmarshal into a ListProductsResponse
-	// then append the products to the catalog
 	var products []*pb.Product
 	for _, f := range jsonFiles {
 		jsonData, err := os.ReadFile("./products/" + f.Name())
@@ -215,7 +229,6 @@ func readProductFiles() ([]*pb.Product, error) {
 	}
 
 	log.Infof("Loaded %d products", len(products))
-
 	return products, nil
 }
 
@@ -227,8 +240,12 @@ func mustMapEnv(target *string, key string) {
 	*target = value
 }
 
+// ===== gRPC methods =====
+
 func (p *productCatalog) Check(ctx context.Context, req *healthpb.HealthCheckRequest) (*healthpb.HealthCheckResponse, error) {
-	return &healthpb.HealthCheckResponse{Status: healthpb.HealthCheckResponse_SERVING}, nil
+	return &healthpb.HealthCheckResponse{
+		Status: healthpb.HealthCheckResponse_SERVING,
+	}, nil
 }
 
 func (p *productCatalog) Watch(req *healthpb.HealthCheckRequest, ws healthpb.Health_WatchServer) error {
@@ -238,19 +255,14 @@ func (p *productCatalog) Watch(req *healthpb.HealthCheckRequest, ws healthpb.Hea
 func (p *productCatalog) ListProducts(ctx context.Context, req *pb.Empty) (*pb.ListProductsResponse, error) {
 	span := trace.SpanFromContext(ctx)
 
-	span.SetAttributes(
-		attribute.Int("app.products.count", len(catalog)),
-	)
+	span.SetAttributes(attribute.Int("app.products.count", len(catalog)))
 	return &pb.ListProductsResponse{Products: catalog}, nil
 }
 
 func (p *productCatalog) GetProduct(ctx context.Context, req *pb.GetProductRequest) (*pb.Product, error) {
 	span := trace.SpanFromContext(ctx)
-	span.SetAttributes(
-		attribute.String("app.product.id", req.Id),
-	)
+	span.SetAttributes(attribute.String("app.product.id", req.Id))
 
-	// GetProduct will fail on a specific product when feature flag is enabled
 	if p.checkProductFailure(ctx, req.Id) {
 		msg := fmt.Sprintf("Error: Product Catalog Fail Feature Flag Enabled")
 		span.SetStatus(otelcodes.Error, msg)
@@ -275,9 +287,8 @@ func (p *productCatalog) GetProduct(ctx context.Context, req *pb.GetProductReque
 
 	msg := fmt.Sprintf("Product Found - ID: %s, Name: %s", req.Id, found.Name)
 	span.AddEvent(msg)
-	span.SetAttributes(
-		attribute.String("app.product.name", found.Name),
-	)
+	span.SetAttributes(attribute.String("app.product.name", found.Name))
+
 	return found, nil
 }
 
@@ -291,9 +302,8 @@ func (p *productCatalog) SearchProducts(ctx context.Context, req *pb.SearchProdu
 			result = append(result, product)
 		}
 	}
-	span.SetAttributes(
-		attribute.Int("app.products_search.count", len(result)),
-	)
+
+	span.SetAttributes(attribute.Int("app.products_search.count", len(result)))
 	return &pb.SearchProductsResponse{Results: result}, nil
 }
 
@@ -304,8 +314,12 @@ func (p *productCatalog) checkProductFailure(ctx context.Context, id string) boo
 
 	client := openfeature.NewClient("productCatalog")
 	failureEnabled, _ := client.BooleanValue(
-		ctx, "productCatalogFailure", false, openfeature.EvaluationContext{},
+		ctx,
+		"productCatalogFailure",
+		false,
+		openfeature.EvaluationContext{},
 	)
+
 	return failureEnabled
 }
 
@@ -315,8 +329,3 @@ func createClient(ctx context.Context, svcAddr string) (*grpc.ClientConn, error)
 		grpc.WithStatsHandler(otelgrpc.NewClientHandler()),
 	)
 }
-
-
-
-
-
