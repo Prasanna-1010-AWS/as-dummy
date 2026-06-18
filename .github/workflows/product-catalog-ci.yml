@@ -69,7 +69,7 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
-          go-version-file: go.mod
+          go-version-file: src/product-catalog/go.mod
           cache: true
 
       - name: Run product-catalog tests
