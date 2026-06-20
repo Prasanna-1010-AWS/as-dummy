@@ -300,3 +300,6 @@ jobs:
         with:
           commit_message: '[CI] Promote ad to ${{ inputs.promote_to }}'
           file_pattern: gitops/helm-values/**/ad-values.yaml
+
+
+#testing
