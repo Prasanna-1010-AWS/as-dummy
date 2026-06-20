@@ -1,4 +1,4 @@
-# Copyright The OpenTelemetry Authors
+# Copyright The OpenTelemetry Authorssssss
 # SPDX-License-Identifier: Apache-2.0
 
 
