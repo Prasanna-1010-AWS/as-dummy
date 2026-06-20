@@ -1,5 +1,5 @@
 service:
-  name: frontend
+  name: recommendation
   environment: dev
 
 image:
@@ -11,10 +11,10 @@ replicaCount: 1
 
 resources:
   requests:
-    cpu: 150m
+    cpu: 100m
     memory: 128Mi
   limits:
-    cpu: 400m
+    cpu: 300m
     memory: 256Mi
 
 autoscaling:
