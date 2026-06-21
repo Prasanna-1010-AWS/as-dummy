@@ -67,7 +67,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # ---------------- TESTS ----------------
+      # ---------------- NODE SETUP ----------------
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
@@ -79,9 +79,7 @@ jobs:
         run: npm ci
         working-directory: ${{ env.SERVICE_PATH }}
 
-      - name: Run tests
-        run: echo "No tests configured yet" && exit 0
-        working-directory: ${{ env.SERVICE_PATH }}
+      # ❌ REMOVED TEST STEP (FIX)
 
       - name: Build (for CodeQL context)
         run: npm run build --if-present
@@ -98,7 +96,7 @@ jobs:
 
       # ---------------- DEPENDENCY SCAN ----------------
       - name: Trivy FS scan
-        uses: aquasecurity/trivy-action@v0.19.0
+        uses: aquasecurity/trivy-action@0.19.0
         with:
           scan-type: fs
           scan-ref: ${{ env.SERVICE_PATH }}
@@ -128,7 +126,7 @@ jobs:
 
       # ---------------- IMAGE SCAN ----------------
       - name: Trivy image scan
-        uses: aquasecurity/trivy-action@v0.19.0
+        uses: aquasecurity/trivy-action@0.19.0
         with:
           image-ref: ${{ env.IMAGE_URI }}
           format: sarif
@@ -229,63 +227,7 @@ jobs:
             --digest "${IMAGE_DIGEST}"
 
       - name: Commit dev update
-        if: github.event_name == 'push'
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
           commit_message: '[CI] Update frontend image in dev'
           file_pattern: gitops/helm-values/dev/frontend-values.yaml
-
-  # ================= PROMOTION =================
-  frontend-promotion:
-    name: Promote Image (staging/prod)
-    if: github.event_name == 'workflow_dispatch'
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Configure AWS
-        if: inputs.image_tag != ''
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          role-to-assume: ${{ env.AWS_ROLE_ARN }}
-          aws-region: ${{ env.AWS_REGION }}
-
-      - name: Promote image
-        run: |
-          set -e
-
-          SOURCE_FILE="${DEV_VALUES_FILE}"
-          DEST_FILE="${STAGING_VALUES_FILE}"
-
-          if [ "${{ inputs.promote_to }}" = "prod" ]; then
-            SOURCE_FILE="${STAGING_VALUES_FILE}"
-            DEST_FILE="${PROD_VALUES_FILE}"
-          fi
-
-          EXTRA_ARGS=""
-
-          if [ -n "${{ inputs.image_tag }}" ]; then
-            ECR_REPOSITORY="${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${PROJECT_NAME}/${SERVICE_NAME}"
-            IMAGE_TAG="${{ inputs.image_tag }}"
-
-            IMAGE_DIGEST=$(aws ecr describe-images \
-              --repository-name "${PROJECT_NAME}/${SERVICE_NAME}" \
-              --image-ids imageTag="${IMAGE_TAG}" \
-              --query 'imageDetails[0].imageDigest' \
-              --output text)
-
-            EXTRA_ARGS="--repository ${ECR_REPOSITORY} --tag ${IMAGE_TAG} --digest ${IMAGE_DIGEST}"
-          fi
-
-          python scripts/ci/update_image_values.py promote \
-            --source "${SOURCE_FILE}" \
-            --destination "${DEST_FILE}" \
-            ${EXTRA_ARGS}
-
-      - name: Commit promotion
-        uses: stefanzweifel/git-auto-commit-action@v5
-        with:
-          commit_message: '[CI] Promote frontend to ${{ inputs.promote_to }}'
-          file_pattern: gitops/helm-values/**/frontend-values.yaml
