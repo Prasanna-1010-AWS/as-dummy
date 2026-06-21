@@ -7,8 +7,12 @@
     "build": "next build",
     "start": "node --require ./Instrumentation.js server.js",
     "lint": "next lint",
+
+    "test": "jest --passWithNoTests",
+
     "cy:open": "cypress open",
-    "grpc:generate": "mkdir -p ./protos && protoc -I ./pb  --plugin=./node_modules/.bin/protoc-gen-ts_proto --ts_proto_opt=esModuleInterop=true --ts_proto_out=./protos --ts_proto_opt=outputServices=grpc-js demo.proto"
+
+    "grpc:generate": "mkdir -p ./protos && protoc -I ./pb --plugin=./node_modules/.bin/protoc-gen-ts_proto --ts_proto_opt=esModuleInterop=true --ts_proto_out=./protos --ts_proto_opt=outputServices=grpc-js demo.proto"
   },
   "dependencies": {
     "@grpc/grpc-js": "1.12.5",
@@ -61,6 +65,11 @@
     "eslint-plugin-react": "7.37.4",
     "eslint-plugin-react-hooks": "5.1.0",
     "openapi-typescript": "7.5.2",
-    "typescript": "5.7.3"
+    "typescript": "5.7.3",
+
+    "jest": "^29.7.0",
+    "jest-environment-jsdom": "^29.7.0",
+    "@testing-library/react": "^16.0.0",
+    "@testing-library/jest-dom": "^6.0.0"
   }
 }
