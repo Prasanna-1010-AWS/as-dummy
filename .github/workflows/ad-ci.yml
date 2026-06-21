@@ -302,4 +302,4 @@ jobs:
           file_pattern: gitops/helm-values/**/ad-values.yaml
 
 
-#testing
+#test
