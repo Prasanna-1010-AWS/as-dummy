@@ -79,6 +79,10 @@ jobs:
         run: npm install
         working-directory: ${{ env.SERVICE_PATH }}
 
+      - name: Generate gRPC types
+        run: npm run grpc:generate
+        working-directory: ${{ env.SERVICE_PATH }}
+
       - name: Build (for CodeQL context)
         run: npm run build --if-present
         working-directory: ${{ env.SERVICE_PATH }}
