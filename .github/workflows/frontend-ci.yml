@@ -62,12 +62,13 @@ jobs:
     name: CI - Test, Scan, Build, Dev Update
     if: github.event_name != 'workflow_dispatch'
     runs-on: ubuntu-latest
+    timeout-minutes: 20
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # ================= PROTOC FIX (ROBUST) =================
+      # ================= PROTOC =================
       - name: Setup Protoc
         uses: arduino/setup-protoc@v3
         with:
@@ -81,9 +82,20 @@ jobs:
           cache: npm
           cache-dependency-path: ${{ env.SERVICE_PATH }}/package-lock.json
 
-      # ================= INSTALL =================
+      # ================= TRIVY FS SCAN (FIXED ORDER) =================
+      - name: Trivy FS scan (source only)
+        uses: aquasecurity/trivy-action@v0.19.0
+        with:
+          scan-type: fs
+          scan-ref: ${{ env.SERVICE_PATH }}
+          format: table
+          severity: CRITICAL
+          scanners: vuln
+          exit-code: '1'
+
+      # ================= INSTALL (HARDENED) =================
       - name: Install dependencies
-        run: npm ci
+        run: npm ci --no-audit --no-fund --prefer-offline
         working-directory: ${{ env.SERVICE_PATH }}
 
       # ================= TEST =================
@@ -104,16 +116,6 @@ jobs:
 
       - name: Analyze CodeQL
         uses: github/codeql-action/analyze@v3
-
-      # ================= TRIVY FS =================
-      - name: Trivy FS scan
-        uses: aquasecurity/trivy-action@v0.19.0
-        with:
-          scan-type: fs
-          scan-ref: ${{ env.SERVICE_PATH }}
-          format: table
-          severity: CRITICAL
-          exit-code: '1'
 
       # ================= IMAGE METADATA =================
       - name: Set image metadata
@@ -252,7 +254,6 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Configure AWS
-        if: inputs.image_tag != ''
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ env.AWS_ROLE_ARN }}
