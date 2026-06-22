@@ -80,7 +80,7 @@ jobs:
         run: |
           cd "${SERVICE_PATH}"
           if [ -x "./gradlew" ]; then
-            ./gradlew googleJavaFormat
+            ./gradlew googleJavaFormatApply
           else
             echo "No Gradle wrapper found; skipping formatting."
           fi
