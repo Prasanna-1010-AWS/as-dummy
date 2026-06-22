@@ -75,6 +75,16 @@ jobs:
           java-version: '21'
           cache: gradle
 
+      # ✅ ADDED STEP (ONLY CHANGE)
+      - name: Format Java code
+        run: |
+          cd "${SERVICE_PATH}"
+          if [ -x "./gradlew" ]; then
+            ./gradlew googleJavaFormat
+          else
+            echo "No Gradle wrapper found; skipping formatting."
+          fi
+
       - name: Run tests
         run: |
           cd "${SERVICE_PATH}"
@@ -300,6 +310,3 @@ jobs:
         with:
           commit_message: '[CI] Promote ad to ${{ inputs.promote_to }}'
           file_pattern: gitops/helm-values/**/ad-values.yaml
-
-
-#test
