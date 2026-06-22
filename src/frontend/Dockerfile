@@ -23,7 +23,7 @@ ENV PATH="/usr/local/bin:$PATH"
 # copy deps
 COPY --from=deps /app/node_modules ./node_modules
 
-# copy full repo context needed for grpc
+# copy full repo context needed for grpc.
 COPY ./pb ./pb
 COPY ./src/frontend ./src/frontend
 
