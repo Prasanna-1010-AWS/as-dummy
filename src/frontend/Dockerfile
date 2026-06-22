@@ -29,9 +29,6 @@ COPY ./src/frontend ./src/frontend
 
 WORKDIR /app/src/frontend
 
-# generate protobuf FIRST
-RUN npm run grpc:generate
-
 # build next standalone
 RUN npm run build
 

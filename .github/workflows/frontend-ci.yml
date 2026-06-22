@@ -53,9 +53,9 @@ env:
 
   IMAGE_TAG: ${{ github.sha }}
 
-  DEV_VALUES_FILE: gitops/helm-values/dev/frontend-values.yaml
-  STAGING_VALUES_FILE: gitops/helm-values/staging/frontend-values.yaml
-  PROD_VALUES_FILE: gitops/helm-values/prod/frontend-values.yaml
+  DEV_VALUES_FILE: gitops/helm-vals/dev/frontend-values.yaml
+  STAGING_VALUES_FILE: gitops/helm-vals/staging/frontend-values.yaml
+  PROD_VALUES_FILE: gitops/helm-vals/prod/frontend-values.yaml
 
 jobs:
   frontend-ci:
@@ -67,16 +67,13 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # ================= FIXED PROTOC INSTALL =================
-      - name: Install protoc (stable)
-        run: |
-          curl -LO https://github.com/protocolbuffers/protobuf/releases/download/v25.3/protoc-25.3-linux-x86_64.zip
-          unzip protoc-25.3-linux-x86_64.zip -d $HOME/protoc
-          echo "$HOME/protoc/bin" >> $GITHUB_PATH
-          export PATH="$HOME/protoc/bin:$PATH"
-          protoc --version
+      # ================= PROTOC FIX (ROBUST) =================
+      - name: Setup Protoc
+        uses: arduino/setup-protoc@v3
+        with:
+          version: '25.3'
 
-      # ---------------- NODE SETUP ----------------
+      # ================= NODE =================
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
@@ -84,22 +81,22 @@ jobs:
           cache: npm
           cache-dependency-path: ${{ env.SERVICE_PATH }}/package-lock.json
 
-      # ---------------- INSTALL ----------------
+      # ================= INSTALL =================
       - name: Install dependencies
         run: npm ci
         working-directory: ${{ env.SERVICE_PATH }}
 
-      # ---------------- TESTS ----------------
+      # ================= TEST =================
       - name: Run tests
         run: npm test
         working-directory: ${{ env.SERVICE_PATH }}
 
-      # ---------------- BUILD ----------------
+      # ================= BUILD =================
       - name: Build
         run: npm run build --if-present
         working-directory: ${{ env.SERVICE_PATH }}
 
-      # ---------------- CODEQL ----------------
+      # ================= CODEQL =================
       - name: Initialize CodeQL
         uses: github/codeql-action/init@v3
         with:
@@ -108,7 +105,7 @@ jobs:
       - name: Analyze CodeQL
         uses: github/codeql-action/analyze@v3
 
-      # ---------------- TRIVY FS SCAN ----------------
+      # ================= TRIVY FS =================
       - name: Trivy FS scan
         uses: aquasecurity/trivy-action@v0.19.0
         with:
@@ -118,7 +115,7 @@ jobs:
           severity: CRITICAL
           exit-code: '1'
 
-      # ---------------- IMAGE METADATA ----------------
+      # ================= IMAGE METADATA =================
       - name: Set image metadata
         run: |
           ECR_REPOSITORY_NAME="${PROJECT_NAME}/${SERVICE_NAME}"
@@ -129,7 +126,7 @@ jobs:
           echo "ECR_REPOSITORY=${ECR_REPOSITORY}" >> $GITHUB_ENV
           echo "IMAGE_URI=${IMAGE_URI}" >> $GITHUB_ENV
 
-      # ---------------- DOCKER BUILD ----------------
+      # ================= DOCKER BUILD =================
       - name: Build Docker image
         run: |
           docker build \
@@ -137,7 +134,7 @@ jobs:
             -t "${IMAGE_URI}" \
             .
 
-      # ---------------- IMAGE SCAN ----------------
+      # ================= IMAGE SCAN =================
       - name: Trivy image scan
         uses: aquasecurity/trivy-action@v0.19.0
         with:
@@ -153,7 +150,7 @@ jobs:
         with:
           sarif_file: trivy.sarif
 
-      # ---------------- SBOM ----------------
+      # ================= SBOM =================
       - name: Generate SBOM
         uses: anchore/sbom-action@v0
         with:
@@ -167,7 +164,7 @@ jobs:
           name: frontend-sbom
           path: frontend-sbom.spdx.json
 
-      # ---------------- AWS PUSH ----------------
+      # ================= AWS PUSH =================
       - name: Configure AWS
         if: github.event_name == 'push'
         uses: aws-actions/configure-aws-credentials@v4
@@ -183,7 +180,7 @@ jobs:
         if: github.event_name == 'push'
         run: docker push "${IMAGE_URI}"
 
-      # ---------------- DIGEST ----------------
+      # ================= DIGEST =================
       - name: Resolve image digest
         if: github.event_name == 'push'
         run: |
@@ -196,7 +193,7 @@ jobs:
           echo "IMAGE_DIGEST=${IMAGE_DIGEST}" >> $GITHUB_ENV
           echo "IMAGE_REF=${ECR_REPOSITORY}@${IMAGE_DIGEST}" >> $GITHUB_ENV
 
-      # ---------------- COSIGN ----------------
+      # ================= COSIGN =================
       - name: Install Cosign
         if: github.event_name == 'push'
         uses: sigstore/cosign-installer@v3
@@ -207,7 +204,7 @@ jobs:
         env:
           COSIGN_YES: 'true'
 
-      # ---------------- ATTESTATION ----------------
+      # ================= ATTESTATION =================
       - name: Provenance attestation
         if: github.event_name == 'push'
         uses: actions/attest-build-provenance@v2
@@ -226,7 +223,7 @@ jobs:
         env:
           COSIGN_YES: 'true'
 
-      # ---------------- DEV UPDATE ----------------
+      # ================= DEV UPDATE =================
       - name: Update dev Helm values
         if: github.event_name == 'push'
         run: |
