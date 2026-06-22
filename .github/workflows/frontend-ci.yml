@@ -67,13 +67,15 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # ---------------- SYSTEM DEPENDENCY FIX (ADDED) ----------------
-      - name: Install protobuf compiler (protoc)
+      # ================= FIXED PROTOC INSTALL (STABLE) =================
+      - name: Install protoc (stable)
         run: |
-          sudo apt-get update
-          sudo apt-get install -y protobuf-compiler
+          curl -LO https://github.com/protocolbuffers/protobuf/releases/download/v25.3/protoc-25.3-linux-x86_64.zip
+          unzip protoc-25.3-linux-x86_64.zip -d $HOME/protoc
+          echo "$HOME/protoc/bin" >> $GITHUB_PATH
+          protoc --version
 
-      # ---------------- TESTS ----------------
+      # ---------------- NODE SETUP ----------------
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
@@ -81,19 +83,22 @@ jobs:
           cache: npm
           cache-dependency-path: ${{ env.SERVICE_PATH }}/package-lock.json
 
+      # ---------------- INSTALL ----------------
       - name: Install dependencies
         run: npm ci
         working-directory: ${{ env.SERVICE_PATH }}
 
+      # ---------------- TEST ----------------
       - name: Run tests
         run: npm test
         working-directory: ${{ env.SERVICE_PATH }}
 
-      - name: Build (for CodeQL context)
+      # ---------------- BUILD ----------------
+      - name: Build
         run: npm run build --if-present
         working-directory: ${{ env.SERVICE_PATH }}
 
-      # ---------------- SAST (CodeQL) ----------------
+      # ---------------- CODEQL ----------------
       - name: Initialize CodeQL
         uses: github/codeql-action/init@v3
         with:
@@ -102,7 +107,7 @@ jobs:
       - name: Analyze CodeQL
         uses: github/codeql-action/analyze@v3
 
-      # ---------------- DEPENDENCY SCAN ----------------
+      # ---------------- TRIVY FS SCAN ----------------
       - name: Trivy FS scan
         uses: aquasecurity/trivy-action@v0.19.0
         with:
@@ -117,14 +122,13 @@ jobs:
         run: |
           ECR_REPOSITORY_NAME="${PROJECT_NAME}/${SERVICE_NAME}"
           ECR_REPOSITORY="${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPOSITORY_NAME}"
-
           IMAGE_URI="${ECR_REPOSITORY}:${IMAGE_TAG}"
 
           echo "ECR_REPOSITORY_NAME=${ECR_REPOSITORY_NAME}" >> $GITHUB_ENV
           echo "ECR_REPOSITORY=${ECR_REPOSITORY}" >> $GITHUB_ENV
           echo "IMAGE_URI=${IMAGE_URI}" >> $GITHUB_ENV
 
-      # ---------------- BUILD ----------------
+      # ---------------- DOCKER BUILD ----------------
       - name: Build Docker image
         run: |
           docker build \
@@ -141,9 +145,6 @@ jobs:
           output: trivy.sarif
           severity: CRITICAL,HIGH
           exit-code: '0'
-
-      - name: Verify SARIF file exists
-        run: ls -l trivy.sarif
 
       - name: Upload SARIF
         if: success() && hashFiles('trivy.sarif') != ''
@@ -181,7 +182,7 @@ jobs:
         if: github.event_name == 'push'
         run: docker push "${IMAGE_URI}"
 
-      # ---------------- DIGEST RESOLVE ----------------
+      # ---------------- DIGEST ----------------
       - name: Resolve image digest
         if: github.event_name == 'push'
         run: |
@@ -194,7 +195,7 @@ jobs:
           echo "IMAGE_DIGEST=${IMAGE_DIGEST}" >> $GITHUB_ENV
           echo "IMAGE_REF=${ECR_REPOSITORY}@${IMAGE_DIGEST}" >> $GITHUB_ENV
 
-      # ---------------- SIGNING ----------------
+      # ---------------- COSIGN ----------------
       - name: Install Cosign
         if: github.event_name == 'push'
         uses: sigstore/cosign-installer@v3
@@ -205,7 +206,7 @@ jobs:
         env:
           COSIGN_YES: 'true'
 
-      # ---------------- ATTESTATIONS ----------------
+      # ---------------- ATTESTATION ----------------
       - name: Provenance attestation
         if: github.event_name == 'push'
         uses: actions/attest-build-provenance@v2
@@ -224,7 +225,7 @@ jobs:
         env:
           COSIGN_YES: 'true'
 
-      # ---------------- GITOPS DEV UPDATE ----------------
+      # ---------------- DEV UPDATE ----------------
       - name: Update dev Helm values
         if: github.event_name == 'push'
         run: |
