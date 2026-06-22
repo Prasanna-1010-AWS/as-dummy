@@ -1,59 +1,55 @@
 # ===================== DEPENDENCIES =====================
 FROM node:20-alpine AS deps
 
-RUN apk add --no-cache libc6-compat
-
 WORKDIR /app
 
 COPY ./src/frontend/package*.json ./
-
-# clean install (important for CI consistency)
 RUN npm ci
 
 
-# ===================== BUILDER =====================
+# ===================== PROTOC + BUILD =====================
 FROM node:20-alpine AS builder
 
-RUN apk add --no-cache libc6-compat curl unzip
+RUN apk add --no-cache curl unzip libc6-compat
 
 WORKDIR /app
 
-# install protobuf manually (avoids apk issues)
+# install protoc
 RUN curl -LO https://github.com/protocolbuffers/protobuf/releases/download/v25.3/protoc-25.3-linux-x86_64.zip && \
     unzip protoc-25.3-linux-x86_64.zip -d /usr/local
 
+ENV PATH="/usr/local/bin:/usr/local/include:$PATH"
+
+# copy deps
 COPY --from=deps /app/node_modules ./node_modules
 
+# copy source
 COPY ./pb ./pb
-COPY ./src/frontend ./
+COPY ./src/frontend ./src/frontend
 
-# ensure protoc is available
-ENV PATH="/usr/local/bin:$PATH"
+WORKDIR /app/src/frontend
 
+# generate protobuf FIRST
 RUN npm run grpc:generate
+
+# build next standalone
 RUN npm run build
 
 
-# ===================== RUNTIME =====================
-FROM node:20-alpine AS runner
+# ===================== RUNTIME (DISTROLESS) =====================
+FROM gcr.io/distroless/nodejs20-debian12 AS runner
 
 WORKDIR /app
-
-RUN apk add --no-cache libc6-compat
 
 ENV NODE_ENV=production
 ENV PORT=8080
 
-RUN addgroup -g 1001 -S nodejs
-RUN adduser -S nextjs -u 1001
-
-# copy standalone build
-COPY --from=builder /app/.next/standalone ./
-COPY --from=builder /app/.next/static ./.next/static
-COPY --from=builder /app/public ./public
-
-USER nextjs
+# copy only required artifacts
+COPY --from=builder /app/src/frontend/.next/standalone ./
+COPY --from=builder /app/src/frontend/.next/static ./.next/static
+COPY --from=builder /app/src/frontend/public ./public
 
 EXPOSE 8080
 
-CMD ["node", "server.js"]
+# distroless requires full path to node entry
+CMD ["server.js"]
