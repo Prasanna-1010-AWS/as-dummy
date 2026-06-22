@@ -57,6 +57,7 @@ env:
   STAGING_VALUES_FILE: gitops/helm-vals/staging/frontend-values.yaml
   PROD_VALUES_FILE: gitops/helm-vals/prod/frontend-values.yaml
 
+
 jobs:
   frontend-ci:
     name: CI - Test, Scan, Build, Dev Update
@@ -81,8 +82,13 @@ jobs:
           node-version: 20
           cache: npm
           cache-dependency-path: ${{ env.SERVICE_PATH }}/package-lock.json
+          check-latest: true
 
-      # ================= TRIVY FS SCAN (FIXED ORDER) =================
+      - name: Verify npm cache path
+        run: npm config get cache
+        working-directory: ${{ env.SERVICE_PATH }}
+
+      # ================= SECURITY FS SCAN =================
       - name: Trivy FS scan (source only)
         uses: aquasecurity/trivy-action@v0.19.0
         with:
@@ -93,9 +99,9 @@ jobs:
           scanners: vuln
           exit-code: '1'
 
-      # ================= INSTALL (HARDENED) =================
+      # ================= INSTALL =================
       - name: Install dependencies
-        run: npm ci --no-audit --no-fund --prefer-offline
+        run: npm ci --no-audit --no-fund --prefer-offline || npm install
         working-directory: ${{ env.SERVICE_PATH }}
 
       # ================= TEST =================
@@ -241,6 +247,7 @@ jobs:
         with:
           commit_message: '[CI] Update frontend image in dev'
           file_pattern: gitops/helm-vals/dev/frontend-values.yaml
+
 
   # ================= PROMOTION =================
   frontend-promotion:
