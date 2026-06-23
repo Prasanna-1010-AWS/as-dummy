@@ -137,6 +137,18 @@ type checkout struct {
 	paymentSvcClient        pb.PaymentServiceClient
 }
 
+type healthServer struct{}
+
+func (h *healthServer) Check(ctx context.Context, req *healthpb.HealthCheckRequest) (*healthpb.HealthCheckResponse, error) {
+	return &healthpb.HealthCheckResponse{
+		Status: healthpb.HealthCheckResponse_SERVING,
+	}, nil
+}
+
+func (h *healthServer) Watch(req *healthpb.HealthCheckRequest, ws healthpb.Health_WatchServer) error {
+	return status.Errorf(codes.Unimplemented, "watch not implemented")
+}
+
 func main() {
 	var port string
 	mustMapEnv(&port, "CHECKOUT_PORT")
@@ -217,7 +229,7 @@ func main() {
 		grpc.StatsHandler(otelgrpc.NewServerHandler()),
 	)
 	pb.RegisterCheckoutServiceServer(srv, svc)
-	healthpb.RegisterHealthServer(srv, svc)
+	healthpb.RegisterHealthServer(srv, &healthServer{})
 	log.Infof("starting to listen on tcp: %q", lis.Addr().String())
 	err = srv.Serve(lis)
 	log.Fatal(err)
