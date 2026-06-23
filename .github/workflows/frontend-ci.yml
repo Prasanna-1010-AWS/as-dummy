@@ -116,7 +116,7 @@ jobs:
           npm run grpc:generate && npm run build
         working-directory: src/frontend
         env:
-          # FIX: make root pb accessible inside frontend script
+          # FIX: make root pb accessible inside frontend scripts
           PB_PATH: ../../pb
 
       # ================= IMAGE METADATA =================
