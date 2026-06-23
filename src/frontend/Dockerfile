@@ -1,5 +1,5 @@
 # ===================== DEPENDENCIES =====================
-FROM node:20-alpine AS deps
+FROM node:20-slim AS deps
 
 WORKDIR /app/src/frontend
 
@@ -8,9 +8,13 @@ RUN npm ci
 
 
 # ===================== BUILDER =====================
-FROM node:20-alpine AS builder
+FROM node:20-slim AS builder
 
-RUN apk add --no-cache curl unzip libc6-compat
+RUN apt-get update && apt-get install -y \
+    curl \
+    unzip \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
@@ -20,14 +24,15 @@ RUN curl -LO https://github.com/protocolbuffers/protobuf/releases/download/v25.3
 
 ENV PATH="/usr/local/bin:$PATH"
 
-# copy dependencies
+# copy dependency layer
 COPY --from=deps /app/src/frontend/node_modules ./src/frontend/node_modules
 
-# copy full source (IMPORTANT: root context)
+# copy full repo (IMPORTANT: root context)
 COPY pb ./pb
 COPY src/frontend ./src/frontend
 
 WORKDIR /app/src/frontend
+
 
 # ===================== GRPC GENERATION =====================
 RUN mkdir -p ./protos && \
@@ -38,7 +43,7 @@ RUN mkdir -p ./protos && \
       /app/pb/demo.proto
 
 
-# ===================== NEXT.JS BUILD =====================
+# ===================== NEXT BUILD =====================
 RUN npm run build
 
 
@@ -50,7 +55,6 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV PORT=8080
 
-# Next.js standalone output
 COPY --from=builder /app/src/frontend/.next/standalone ./
 COPY --from=builder /app/src/frontend/.next/static ./.next/static
 COPY --from=builder /app/src/frontend/public ./public
