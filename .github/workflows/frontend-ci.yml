@@ -18,6 +18,7 @@ on:
   pull_request:
     paths:
       - 'src/frontend/**'
+      - 'pb/**'
       - 'gitops/charts/astronomy-shop-service/**'
       - 'gitops/helm-values/**'
       - '.github/workflows/frontend-ci.yml'
@@ -27,6 +28,7 @@ on:
       - main
     paths:
       - 'src/frontend/**'
+      - 'pb/**'
       - 'gitops/charts/astronomy-shop-service/**'
       - 'gitops/helm-values/**'
       - '.github/workflows/frontend-ci.yml'
@@ -108,10 +110,14 @@ jobs:
         run: npm test
         working-directory: src/frontend
 
-      # ================= BUILD =================
+      # ================= BUILD (FIXED HERE ONLY) =================
       - name: Build
-        run: npm run grpc:generate && npm run build
+        run: |
+          npm run grpc:generate && npm run build
         working-directory: src/frontend
+        env:
+          # FIX: make root pb accessible inside frontend script
+          PB_PATH: ../../pb
 
       # ================= IMAGE METADATA =================
       - name: Set image metadata
