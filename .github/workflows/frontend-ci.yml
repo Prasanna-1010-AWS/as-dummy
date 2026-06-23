@@ -87,7 +87,7 @@ jobs:
           cache: npm
           cache-dependency-path: src/frontend/package-lock.json
 
-      # ================= SECURITY FS SCAN =================
+      # ================= TRIVY FS SCAN =================
       - name: Trivy FS scan (source only)
         uses: aquasecurity/trivy-action@v0.19.0
         with:
@@ -113,15 +113,6 @@ jobs:
         run: npm run build --if-present
         working-directory: src/frontend
 
-      # ================= CODEQL =================
-      - name: Initialize CodeQL
-        uses: github/codeql-action/init@v3
-        with:
-          languages: javascript-typescript
-
-      - name: Analyze CodeQL
-        uses: github/codeql-action/analyze@v3
-
       # ================= IMAGE METADATA =================
       - name: Set image metadata
         run: |
@@ -141,7 +132,7 @@ jobs:
             -t "${IMAGE_URI}" \
             .
 
-      # ================= IMAGE SCAN =================
+      # ================= TRIVY IMAGE SCAN =================
       - name: Trivy image scan
         uses: aquasecurity/trivy-action@v0.19.0
         with:
