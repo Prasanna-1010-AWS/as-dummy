@@ -55,9 +55,9 @@ env:
 
   IMAGE_TAG: ${{ github.sha }}
 
-  DEV_VALUES_FILE: gitops/helm-vals/dev/frontend-values.yaml
-  STAGING_VALUES_FILE: gitops/helm-vals/staging/frontend-values.yaml
-  PROD_VALUES_FILE: gitops/helm-vals/prod/frontend-values.yaml
+  DEV_VALUES_FILE: gitops/helm-values/dev/frontend-values.yaml
+  STAGING_VALUES_FILE: gitops/helm-values/staging/frontend-values.yaml
+  PROD_VALUES_FILE: gitops/helm-values/prod/frontend-values.yaml
 
 
 jobs:
