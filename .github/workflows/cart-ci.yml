@@ -49,7 +49,7 @@ env:
   PROJECT_NAME: astronomy-shop
   SERVICE_NAME: cart
   SERVICE_PATH: src/cart
-  DOCKERFILE_PATH: src/cart/Dockerfile
+  DOCKERFILE_PATH: src/cart/src/Dockerfile
 
   IMAGE_TAG: ${{ github.sha }}
 
