@@ -1,0 +1,37 @@
+service:
+  name: product-catalog
+  environment: dev
+
+image:
+  repository: "241766333730.dkr.ecr.ap-south-1.amazonaws.com/astronomy-shop/product-catalog"
+  tag: "5ed0825df2e0bad7fe4b92b7a910785aa9c4c734"
+  digest: "sha256:6822596817cbfef9dd7924fac38989a46a63633b2c036931f7cb41a2d0e1f936"
+  pullPolicy: IfNotPresent
+
+replicaCount: 1
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 300m
+    memory: 256Mi
+
+autoscaling:
+  enabled: true
+  minReplicas: 1
+  maxReplicas: 2
+  targetCPUUtilizationPercentage: 70
+  targetMemoryUtilizationPercentage: 80
+
+rollout:
+  strategy: rollingUpdate
+  maxUnavailable: 0
+  maxSurge: 1
+
+observability:
+  metrics:
+    enabled: true
+  tracing:
+    enabled: true

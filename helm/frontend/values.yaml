@@ -1,0 +1,37 @@
+service:
+  name: frontend
+  environment: dev
+
+image:
+  repository: "241766333730.dkr.ecr.ap-south-1.amazonaws.com/astronomy-shop/frontend"
+  tag: "5bae582e49ba96bfdf635e4203ed07ffc73f2120"
+  digest: "sha256:68505e8943fedcd13d5c94017b38e58cc1975618e34bc31fab5a97dc1fd84b01"
+  pullPolicy: IfNotPresent
+
+replicaCount: 1
+
+resources:
+  requests:
+    cpu: 150m
+    memory: 128Mi
+  limits:
+    cpu: 400m
+    memory: 256Mi
+
+autoscaling:
+  enabled: true
+  minReplicas: 1
+  maxReplicas: 2
+  targetCPUUtilizationPercentage: 70
+  targetMemoryUtilizationPercentage: 80
+
+rollout:
+  strategy: rollingUpdate
+  maxUnavailable: 0
+  maxSurge: 1
+
+observability:
+  metrics:
+    enabled: true
+  tracing:
+    enabled: true
