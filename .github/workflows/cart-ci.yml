@@ -71,17 +71,19 @@ jobs:
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: 9.0.x
+          dotnet-version: 8.0.x
 
-      - name: Run tests
-        run: |
-          dotnet restore "${SERVICE_PATH}"
-          dotnet test "${SERVICE_PATH}" --no-restore
       # ---------------- SAST (CodeQL) ----------------
       - name: Initialize CodeQL
         uses: github/codeql-action/init@v3
         with:
           languages: csharp
+
+      - name: Run tests
+        run: |
+          dotnet restore "${SERVICE_PATH}"
+          dotnet build "${SERVICE_PATH}" --no-restore
+          dotnet test "${SERVICE_PATH}" --no-build
 
       - name: Analyze CodeQL
         uses: github/codeql-action/analyze@v3
