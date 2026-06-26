@@ -1,14 +1,14 @@
-# ===================== DEPENDENCIES =====================
-FROM node:20-slim AS deps
-
+# ===================== BASE =====================
+FROM node:20-slim AS base
 WORKDIR /app/src/frontend
 
+# ===================== DEPENDENCIES =====================
+FROM base AS deps
 COPY src/frontend/package*.json ./
 RUN npm ci
 
-
 # ===================== BUILDER =====================
-FROM node:20-slim AS builder
+FROM base AS builder
 
 RUN apt-get update && apt-get install -y \
     curl \
@@ -16,23 +16,23 @@ RUN apt-get update && apt-get install -y \
     ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
-WORKDIR /app
-
 # install protoc
 RUN curl -LO https://github.com/protocolbuffers/protobuf/releases/download/v25.3/protoc-25.3-linux-x86_64.zip && \
     unzip protoc-25.3-linux-x86_64.zip -d /usr/local
 
 ENV PATH="/usr/local/bin:$PATH"
 
-# copy dependency layer
-COPY --from=deps /app/src/frontend/node_modules ./src/frontend/node_modules
+WORKDIR /app
 
-# copy full repo (IMPORTANT: root context)
+# copy full repo
 COPY pb ./pb
 COPY src/frontend ./src/frontend
 
 WORKDIR /app/src/frontend
 
+# install deps AGAIN (important for deterministic builds)
+COPY src/frontend/package*.json ./
+RUN npm ci
 
 # ===================== GRPC GENERATION =====================
 RUN mkdir -p ./protos && \
@@ -41,7 +41,6 @@ RUN mkdir -p ./protos && \
       --ts_proto_out=./protos \
       --ts_proto_opt=esModuleInterop=true,outputServices=grpc-js \
       /app/pb/demo.proto
-
 
 # ===================== NEXT BUILD =====================
 RUN npm run build

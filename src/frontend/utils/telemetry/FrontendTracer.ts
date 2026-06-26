@@ -10,7 +10,6 @@ import { Resource } from '@opentelemetry/resources';
 import { SemanticResourceAttributes } from '@opentelemetry/semantic-conventions';
 import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http';
 import { SessionIdProcessor } from './SessionIdProcessor';
-import { detectResourcesSync } from '@opentelemetry/resources/build/src/detect-resources';
 import { ZoneContextManager } from '@opentelemetry/context-zone';
 
 const {
