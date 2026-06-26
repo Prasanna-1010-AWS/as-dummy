@@ -1,15 +1,15 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ include "payment.fullname" . }}
+  name: payment
   labels:
-    {{- include "payment.labels" . | nindent 4 }}
+    app.kubernetes.io/name: payment
+    app.kubernetes.io/part-of: astronomy-shop
 spec:
-  type: {{ .Values.service.type }}
-  ports:
-    - port: {{ .Values.service.port }}
-      targetPort: http
-      protocol: TCP
-      name: http
+  type: ClusterIP
   selector:
-    {{- include "payment.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/name: payment
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http
