@@ -121,8 +121,9 @@ jobs:
       # ================= BUILD (FIXED HERE ONLY) =================
       - name: Build
         run: |
+          set -e
           npm run grpc:generate
-          ./node_modules/.bin/next build --webpack
+          npx next build --webpack
         working-directory: src/frontend
         env:
           # FIX: make root pb accessible inside frontend scripts
