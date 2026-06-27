@@ -6,7 +6,7 @@ import { WebTracerProvider } from '@opentelemetry/sdk-trace-web';
 import { BatchSpanProcessor } from '@opentelemetry/sdk-trace-base';
 import { registerInstrumentations } from '@opentelemetry/instrumentation';
 import { getWebAutoInstrumentations } from '@opentelemetry/auto-instrumentations-web';
-import { resourceFromAttributes } from '@opentelemetry/resources';
+import { Resource } from '@opentelemetry/resources';
 import { SemanticResourceAttributes } from '@opentelemetry/semantic-conventions';
 import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http';
 import { SessionIdProcessor } from './SessionIdProcessor';
@@ -19,7 +19,7 @@ const {
 } = typeof window !== 'undefined' ? window.ENV : {};
 
 const FrontendTracer = () => {
-  const resource = resourceFromAttributes({
+  const resource = new Resource({
     [SemanticResourceAttributes.SERVICE_NAME]: NEXT_PUBLIC_OTEL_SERVICE_NAME,
   });
 
