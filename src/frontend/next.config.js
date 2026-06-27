@@ -29,7 +29,7 @@ const {
 const nextConfig = {
   reactStrictMode: true,
   output: 'standalone',
-  outputFileTracingRoot: resolve(__dirname, '../..'),
+  swcMinify: true,
   compiler: {
     styledComponents: true,
   },

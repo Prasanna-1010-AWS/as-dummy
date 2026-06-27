@@ -5,17 +5,17 @@
 FROM node:20-alpine AS deps
 RUN apk add --no-cache libc6-compat
 
-WORKDIR /app/src/frontend
+WORKDIR /app
 
 COPY ./src/frontend/package*.json ./
 RUN npm ci
 
 FROM node:20-alpine AS builder
 RUN apk add --no-cache libc6-compat protobuf-dev protoc
-WORKDIR /app/src/frontend
-COPY --from=deps /app/src/frontend/node_modules ./node_modules
-COPY ./pb /app/pb
-COPY ./src/frontend ./
+WORKDIR /app
+COPY --from=deps /app/node_modules ./node_modules
+COPY ./pb ./pb
+COPY ./src/frontend .
 
 RUN npm run grpc:generate
 RUN npm run build
@@ -29,19 +29,18 @@ ENV NODE_ENV=production
 RUN addgroup -g 1001 -S nodejs
 RUN adduser -S nextjs -u 1001
 
-COPY --from=builder /app/src/frontend/next.config.js ./
-COPY --from=builder /app/src/frontend/utils/telemetry/Instrumentation.js ./
-COPY --from=builder /app/src/frontend/public ./public
-COPY --from=builder /app/src/frontend/package.json ./package.json
-COPY --from=deps /app/src/frontend/node_modules ./node_modules
+COPY --from=builder /app/next.config.js ./
+COPY --from=builder /app/utils/telemetry/Instrumentation.js ./
+COPY --from=builder /app/public ./public
+COPY --from=builder /app/package.json ./package.json
+COPY --from=deps /app/node_modules ./node_modules
 
-COPY --from=builder --chown=nextjs:nodejs /app/src/frontend/.next/standalone ./
-COPY --from=builder --chown=nextjs:nodejs /app/src/frontend/.next/static ./.next/static
+COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
+COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
 USER nextjs
 
 ENV PORT=8080
 EXPOSE ${PORT}
 
-CMD ["node", "--require", "./Instrumentation.js", "server.js"]
-
+ENTRYPOINT ["npm", "start"]
