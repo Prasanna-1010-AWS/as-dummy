@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "npm run grpc:generate && NODE_OPTIONS='-r ./utils/telemetry/Instrumentation.js' next dev",
-    "build": "next build",
+    "build": "next build --webpack",
     "start": "node --require ./Instrumentation.js server.js",
     "lint": "next lint",
     "cy:open": "cypress open",
@@ -39,7 +39,7 @@
     "currency-symbol-map": "5.1.0",
     "dotenv": "16.4.7",
     "dotenv-expand": "12.0.1",
-    "next": "^16.2.9",
+    "next": "15.5.7",
     "protobufjs": "^7.5.5",
     "react": "19.0.0",
     "react-dom": "19.0.0",
