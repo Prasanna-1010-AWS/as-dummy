@@ -227,7 +227,7 @@ jobs:
           commit_message: '[CI] Update cart image in dev'
           file_pattern: gitops/helm-values/dev/cart-values.yaml
 
-  # ================= PROMOTION =================
+  # ================= PROMOTION ================= #
   cart-promotion:
     name: Promote Image (staging/prod)
     if: github.event_name == 'workflow_dispatch'
