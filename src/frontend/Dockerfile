@@ -1,87 +1,63 @@
-# =========================
-# 1. Base image
-# =========================
-FROM node:20-alpine AS base
-
-WORKDIR /app
-
-# install system deps
-RUN apk add --no-cache libc6-compat python3 make g++ protobuf protobuf-dev
+# Copyright The OpenTelemetry Authors
+# SPDX-License-Identifier: Apache-2.0
 
 # =========================
-# 2. Dependencies stage
+# 1. Dependencies
 # =========================
-FROM base AS deps
+FROM node:20-alpine AS deps
 
-WORKDIR /app
+RUN apk add --no-cache libc6-compat
 
-# copy only package files first (better caches)
+WORKDIR /app/src/frontend
+
 COPY ./src/frontend/package*.json ./
 
-# 🚨 disable Cypress download
+# Prevent Cypress from downloading its binary during image builds.
 ENV CYPRESS_INSTALL_BINARY=0
-ENV npm_config_loglevel=verbose
-
-# npm stability for CI/network issues
-RUN npm config set registry https://registry.npmjs.org/ && \
-    npm config set fetch-retries 10 && \
-    npm config set fetch-retry-mintimeout 20000 && \
-    npm config set fetch-retry-maxtimeout 300000 && \
-    npm config set fetch-timeout 600000 && \
-    npm config set maxsockets 1 && \
-    npm config set strict-ssl true
 
 RUN npm ci --no-audit --no-fund
 
 # =========================
-# 3. Builder stage
+# 2. Builder
 # =========================
-FROM base AS builder
+FROM node:20-alpine AS builder
 
-WORKDIR /app
-
-# copy source + proto
-COPY ./src/frontend ./src/frontend
-COPY ./pb ./pb
-
-# bring deps
-COPY --from=deps /app/node_modules ./node_modules
-
-# install ts-proto plugin (THIS IS THE FIX)
-RUN npm install -g ts-proto
+RUN apk add --no-cache libc6-compat protobuf-dev protoc
 
 WORKDIR /app/src/frontend
 
-# generate protobuf
-RUN mkdir -p ./protos && \
-    protoc -I /app/pb \
-    --plugin=protoc-gen-ts_proto=$(which protoc-gen-ts_proto) \
-    --ts_proto_out=./protos \
-    --ts_proto_opt=esModuleInterop=true \
-    --ts_proto_opt=outputServices=grpc-js \
-    /app/pb/demo.proto
+COPY --from=deps /app/src/frontend/node_modules ./node_modules
+COPY ./pb /app/pb
+COPY ./src/frontend ./
 
-# build app
+RUN npm run grpc:generate
 RUN npm run build
 
 # =========================
-# 4. Runner stage
+# 3. Runner
 # =========================
 FROM node:20-alpine AS runner
 
 WORKDIR /app
 
 ENV NODE_ENV=production
+ENV PORT=8080
+ENV HOSTNAME=0.0.0.0
 
-RUN addgroup -g 1001 -S nodejs && \
-    adduser -S nextjs -u 1001
+RUN addgroup -g 1001 -S nodejs \
+    && adduser -S nextjs -u 1001
 
-# copy only built output + deps
-COPY --from=builder /app/src/frontend ./
-COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/src/frontend/next.config.js ./
+COPY --from=builder /app/src/frontend/utils/telemetry/Instrumentation.js ./
+COPY --from=builder /app/src/frontend/public ./public
+COPY --from=builder /app/src/frontend/package.json ./package.json
+COPY --from=deps /app/src/frontend/node_modules ./node_modules
+
+COPY --from=builder --chown=nextjs:nodejs /app/src/frontend/.next/standalone ./
+COPY --from=builder --chown=nextjs:nodejs /app/src/frontend/.next/static ./.next/static
 
 USER nextjs
 
-EXPOSE 3000
+EXPOSE 8080
 
-CMD ["npm", "start"]
+CMD ["node", "--require", "./Instrumentation.js", "server.js"]
