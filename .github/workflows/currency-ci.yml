@@ -54,7 +54,7 @@ env:
   DOCKERFILE_PATH: src/currency/Dockerfile
 
   IMAGE_TAG: ${{ github.sha }}
-  OPENTELEMETRY_CPP_VERSION: ${{ vars.OPENTELEMETRY_CPP_VERSION || '1.23.0' }}
+  OPENTELEMETRY_CPP_VERSION: ${{ vars.OPENTELEMETRY_CPP_VERSION || '1.17.0' }}
 
   DEV_VALUES_FILE: gitops/helm-values/dev/currency-values.yaml
   STAGING_VALUES_FILE: gitops/helm-values/staging/currency-values.yaml
