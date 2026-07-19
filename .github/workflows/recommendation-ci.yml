@@ -100,7 +100,7 @@ jobs:
             python -m compileall .
           fi
 
-      # ---------------- SAST (CodeQL) ----------------
+      # ---------------- SAST (CodeQL) -----------------
       - name: Initialize CodeQL
         uses: github/codeql-action/init@v3
         with:
