@@ -70,7 +70,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # ---------------- TESTS / VALIDATION ----------------
+      # ---------------- TESTS / VALIDATION ---------------- #
       - name: Validate service inputs
         run: |
           test -f "${SERVICE_PATH}/CMakeLists.txt"
