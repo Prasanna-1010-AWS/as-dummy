@@ -75,7 +75,7 @@ jobs:
       - name: Verify frontend structure
         run: ls -la src/frontend
 
-      # ================= PROTOC =================
+      # ================= PROTOC ================= #
       - name: Setup Protoc
         uses: arduino/setup-protoc@v3
         with:
